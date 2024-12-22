@@ -1,85 +1,92 @@
 from dotenv import load_dotenv
-load_dotenv()  # Loading all the environment variables
-
-import streamlit as st
 import os
+import streamlit as st
 import google.generativeai as genai
 
+# Load environment variables
+load_dotenv()
+
+# Configure Google API with the secret GOOGLE_API_KEY
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Function to load Gemini Pro model and get responses
-model = genai.GenerativeModel("gemini-pro") 
+model = genai.GenerativeModel("gemini-pro")
 chat = model.start_chat(history=[])
 
 def get_gemini_response(question):
     response = chat.send_message(question, stream=True)
     return response
 
-# Initialize Streamlit app
-st.set_page_config(
-    page_title="Q&A Bot 🤖",
-    page_icon="🤖",
-    layout="centered",
-    initial_sidebar_state="expanded",
-)
+# Initialize Streamlit app with an attractive frontend
+st.set_page_config(page_title="Q-A_bot", page_icon=":robot_face:")
 
-# App Header with Emoji
 st.markdown("""
-    <h1 style='text-align: center;'>Q&A Bot 🤖</h1>
-    <p style='text-align: center; font-size: 18px;'>Ask anything and let Gemini LLM provide the answers! 🎨</p>
-    <hr>
+    <style>
+    .header {
+        font-size: 40px;
+        font-weight: bold;
+        color: #2F80ED;
+        text-align: center;
+    }
+    .subheader {
+        font-size: 20px;
+        font-weight: bold;
+        color: #2F80ED;
+    }
+    .chat-container {
+        background-color: #f0f4f8;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .message {
+        margin-bottom: 10px;
+    }
+    .message-user {
+        background-color: #f1f1f1;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+    .message-bot {
+        background-color: #dfe6e9;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+    </style>
 """, unsafe_allow_html=True)
 
-# Sidebar customization
-st.sidebar.markdown("""
-    ## 🔧 Features:
-    - Chat with an advanced LLM (Gemini Pro).
-    - Stream responses for a dynamic experience.
-    - Keep track of chat history.
-    
-    **💡 Tip:** Use clear and concise questions for the best answers!
-    
-    <hr>
-    ❤️ Built with Streamlit & Google Generative AI
-""", unsafe_allow_html=True)
+# Header and page title
+st.markdown('<p class="header">Q-A_bot 🤖</p>', unsafe_allow_html=True)
+st.markdown("<h2 class='subheader'>Ask your questions below! 💬</h2>", unsafe_allow_html=True)
 
-# Initialize session state for chat history
+# Initialize session state for chat history if it doesn't exist
 if 'chat_history' not in st.session_state:
     st.session_state['chat_history'] = []
 
-# Input and buttons
-st.text_input("Your Question 🔎:", key="input", placeholder="Type your question here...", label_visibility="visible")
-submit = st.button("Ask 🔔")
+# Input form for asking a question
+input = st.text_input("Your Question: 🤔", key="input")
+submit = st.button("Ask the Question! ✨")
 
-# Process user input and display response
-if submit and st.session_state.input:
-    user_input = st.session_state.input
-    st.session_state['chat_history'].append(("You", user_input))
+if submit and input:
+    # Get Gemini response
+    response = get_gemini_response(input)
 
-    with st.spinner("Fetching response 🔄..."):
-        response = get_gemini_response(user_input)
-        bot_response = ""  # To store the full response
+    # Add user query and response to session state chat history
+    st.session_state['chat_history'].append(("You", input))
+    
+    st.subheader("The Response is: 🧠")
+    with st.beta_expander("Show Response", expanded=True):
         for chunk in response:
-            bot_response += chunk.text
-        st.session_state['chat_history'].append(("Bot", bot_response))
+            st.write(chunk.text)
+            st.session_state['chat_history'].append(("Bot", chunk.text))
 
-    st.success("Response received! 🚀")
-
-# Display Chat History
-st.markdown("### 🕝 Chat History")
-if st.session_state['chat_history']:
+# Chat History Display
+st.subheader("Chat History 🗨️")
+with st.container():
     for role, text in st.session_state['chat_history']:
         if role == "You":
-            st.markdown(f"**{role} 🙋🏼:** {text}")
+            st.markdown(f'<div class="message message-user">{role}: {text}</div>', unsafe_allow_html=True)
         else:
-            st.markdown(f"**{role} 🤖:** {text}")
-else:
-    st.info("No chat history yet. Start asking questions! 🔍")
-
-# Footer
-st.markdown("""
-    <hr>
-    <p style='text-align: center; font-size: 14px;'>
-    ❤️ Powered by <strong>Google Generative AI</strong> & Streamlit. 🌐
-    </p>
-""", unsafe_allow_html=True)
+            st.markdown(f'<div class="message message-bot">{role}: {text}</div>', unsafe_allow_html=True)
